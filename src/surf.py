@@ -8,7 +8,7 @@ from math import sqrt
 #------------------------#
 #-----SURF ALGORITHM-----#
 #------------------------#
-image = imread('test/reference02.jpg')
+image = imread('test/reference.jpg')
 
 #-----PREPROCESSING-----#
 # GRAYSCALE
@@ -215,20 +215,16 @@ def build_descriptor(x, y, L, Dx, Dy):
                     su, sv  = sigma * u, sigma * v
                     dx, dy  = gauss[u // 3, v // 3] * np.array([Dx[x + su, y + sv], Dy[x + su, y + sv]])
                     result[i,j] += np.array([dx, dy, np.abs(dx), np.abs(dy)])
-    print(la.norm(result, axis=2))
-    print(result)
-    result = result / la.norm(result, axis=2)
-    print(result)
+    result = result / la.norm(result, axis=2).reshape(4,4,1 )
     return result
 
-#x   = image.shape[0] // 2
-#y   = image.shape[1] // 2
-#L   = 3
-#Dx  = first_order_x_image(L, integral)
-#Dy  = first_order_y_image(L, integral)
-#
-#e = 10
-#print(build_descriptor(x, y, L, Dx, Dy))
+x   = image.shape[0] // 2
+y   = image.shape[1] // 2
+L   = 3
+Dx  = first_order_x_image(L, integral)
+Dy  = first_order_y_image(L, integral)
+
+e = 10
+print(build_descriptor(x, y, L, Dx, Dy))
 #print(build_descriptor(x+e, y+e, L, Dx, Dy))
 #print(build_descriptor(x-e, y-e, L, Dx, Dy))
-#print(la.norm(build_descriptor(x, y, L, Dx, Dy), axis=2))
