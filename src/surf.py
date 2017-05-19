@@ -25,22 +25,17 @@ image = np.dot(image, np.array([0.241,0.691,0.068]))
 integral = np.cumsum(np.cumsum(image, axis=0), axis=1)
 
 # FIRST ORDER BOX FILTER
-# PIXEL SCALE
-def first_order_y_box_filter(x, y, l, i):
-    return (i[x + l, y + l] + i[x - l - 1, y] - i[x + l, y] - i[x - l - 1, y + l]) \
-         - (i[x + l, y - 1] + i[x - l - 1, y - l - 1] - i[x + l, y - l - 1] - i[x - l - 1, y - 1])
-# Note that l = round(0.8L)
-
-# IMAGE SCALE
 def first_order_x_image(L, integral):
     return first_order_y_image(L, integral.T).T
 
-def first_order_y_image(L, integral):
+def first_order_y_image(L, i):
     l = int(0.8 * L)
-    result = np.zeros(integral.shape)
-    for x in range(l + 1, integral.shape[0] - l):
-        for y in range(l + 1, integral.shape[1] - l):
-            result[x, y] = first_order_y_box_filter(x, y, l, integral)
+    result = (np.roll(i, (-l, -l), axis=(0,1)) + np.roll(i, (l + 1, 0), axis=(0,1)) - np.roll(i, (-l, 0), axis=(0,1)) - np.roll(i, (l + 1, -l), axis=(0,1))) \
+           - (np.roll(i, (-l, 1), axis=(0,1)) + np.roll(i, (l + 1, l + 1), axis=(0,1)) - np.roll(i, (-l, l + 1), axis=(0,1)) - np.roll(i, (l + 1, 1), axis=(0,1)))
+    result[:l + 1,:] = 0
+    result[result.shape[0] - l:,:] = 0
+    result[:,:l + 1] = 0
+    result[:,result.shape[1] - l:] = 0
     return result
 
 #L = 5
@@ -50,41 +45,35 @@ def first_order_y_image(L, integral):
 #plt.show()
 
 # SECOND ORDER BOX FILTER
-# PIXEL SCALE    
-def second_order_yy_box_filter(x, y, L, i):
-    L_2 = L // 2
-    L3_2 = 3 * L_2
-    return (i[x + L, y + L3_2] + i[x - L - 1, y - L3_2 - 1])    \
-         + (i[x - L - 1, y + L_2] + i[x + L, y - L_2 - 1]) * 3  \
-         - (i[x + L, y + L_2] + i[x - L - 1, y - L_2 - 1]) * 3  \
-         - (i[x - L - 1, y + L3_2] + i[x + L, y - L3_2 - 1])
-    
-def second_order_xy_box_filter(x, y, L, i):
-    return (i[x + L, y + L] + i[x, y])                  \
-         + (i[x - 1, y - 1] + i[x - L - 1, y - L - 1])  \
-         + (i[x - 1, y] + i[x - L - 1, y + L])          \
-         + (i[x, y - 1] + i[x + L, y - L - 1])          \
-         - (i[x, y + L] + i[x + L, y])                  \
-         - (i[x - 1, y - L - 1] + i[x - L - 1, y - 1])  \
-         - (i[x - 1, y + L] + i[x - L - 1, y])          \
-         - (i[x + L, y - 1] + i[x, y - L - 1])
-
-# IMAGE SCALE
-def second_order_xy_image(L, integral):
-    result = np.zeros(integral.shape)
-    for x in range(L + 1, integral.shape[0] - L):
-        for y in range(L + 1, integral.shape[1] - L):
-            result[x, y] = second_order_xy_box_filter(x, y, L, integral)
+def second_order_xy_image(L, i):
+    result = (np.roll(i, (-L, -L), axis=(0,1)) + i)                                     \
+           + (np.roll(i, (1, 1), axis=(0,1)) + np.roll(i, (L + 1, L + 1), axis=(0,1)))  \
+           + (np.roll(i, (1, 0), axis=(0,1)) + np.roll(i, (L + 1, -L), axis=(0,1)))     \
+           + (np.roll(i, (0, 1), axis=(0,1)) + np.roll(i, (-L, L + 1), axis=(0,1)))     \
+           - (np.roll(i, (0, -L), axis=(0,1)) + np.roll(i, (-L, 0), axis=(0,1)))        \
+           - (np.roll(i, (1, L + 1), axis=(0,1)) + np.roll(i, (L + 1, 1), axis=(0,1)))  \
+           - (np.roll(i, (1, -L), axis=(0,1)) + np.roll(i, (L + 1, 0), axis=(0,1)))     \
+           - (np.roll(i, (-L, 1), axis=(0,1)) + np.roll(i, (0, L + 1), axis=(0,1)))
+    result[:L + 1,:] = 0
+    result[result.shape[0] - L:,:] = 0
+    result[:,:L + 1] = 0
+    result[:,result.shape[1] - L:] = 0
     return result
 
 def second_order_xx_image(L, integral):
     return second_order_yy_image(L, integral.T).T
 
-def second_order_yy_image(L, integral):
-    result = np.zeros(integral.shape)
-    for x in range(3 * L // 2 + 1, integral.shape[0] - 3 * L // 2 - 1):
-        for y in range(3 * L // 2 + 1, integral.shape[1] - 3 * L // 2 - 1):
-            result[x, y] = second_order_yy_box_filter(x, y, L, integral)
+def second_order_yy_image(L, i):
+    L_2 = L // 2
+    L3_2 = 3 * L_2
+    result = (np.roll(i, (-L, -L3_2), axis=(0,1)) + np.roll(i, (L + 1, L3_2 + 1), axis=(0,1)))      \
+           + (np.roll(i, (L + 1, -L_2), axis=(0,1)) + np.roll(i, (-L, L_2 + 1), axis=(0,1))) * 3    \
+           - (np.roll(i, (-L, -L_2), axis=(0,1)) + np.roll(i, (L + 1, L_2 + 1), axis=(0,1))) * 3    \
+           - (np.roll(i, (L + 1, -L3_2), axis=(0,1)) + np.roll(i, (-L, L3_2 + 1), axis=(0,1)))
+    result[:L3_2 + 2,:] = 0
+    result[result.shape[0] - L3_2 - 2:,:] = 0
+    result[:,:L3_2 + 2] = 0
+    result[:,result.shape[1] - L3_2 - 2:] = 0
     return result
 
 #L = 5
@@ -218,13 +207,47 @@ def build_descriptor(x, y, L, Dx, Dy):
     result = result / la.norm(result, axis=2).reshape(4,4,1 )
     return result
 
-x   = image.shape[0] // 2
-y   = image.shape[1] // 2
-L   = 3
-Dx  = first_order_x_image(L, integral)
-Dy  = first_order_y_image(L, integral)
-
-e = 10
-print(build_descriptor(x, y, L, Dx, Dy))
+#x   = image.shape[0] // 2
+#y   = image.shape[1] // 2
+#L   = 3
+#Dx  = first_order_x_image(L, integral)
+#Dy  = first_order_y_image(L, integral)
+#
+#e = 10
+#descript1  = build_descriptor(x, y, L, Dx, Dy)
+#print(descript1)
+#descript2   = build_descriptor(x+e, y+e, L, Dx, Dy)
+#print(descript2)
 #print(build_descriptor(x+e, y+e, L, Dx, Dy))
 #print(build_descriptor(x-e, y-e, L, Dx, Dy))
+
+from time import time
+
+
+Ls      = np.array([3,5,7,9,13,17,25,33,49,65])
+mats    = []
+
+
+integral = np.cumsum(np.cumsum(image, axis=0), axis=1)
+t = time()
+for L in Ls:
+    hessian = determinant_of_hessian_image(L, integral)
+    Dx      = first_order_x_image(L, integral)
+    Dy      = first_order_y_image(L, integral)
+    mats.append((hessian, Dx, Dy))
+print(time() - t)
+
+features    = []
+t = time()
+for i in range(1, len(Ls) - 1):
+    extracted = feature_selection(mats[i][0], mats[i - 1][0], mats[i + 1][0], Ls[i])
+    features += extracted
+    print(Ls[i], len(extracted))
+print(time() - t)
+
+#descriptors     = []
+#t = time()
+#for feature in features:
+#    iL  = np.abs(Ls - feature[2]).argmin
+#    descriptors.append(build_descriptor(feature[0], feature[1], feature[2], mats[i][1], mats[i][2]))
+#print(time() - t)
