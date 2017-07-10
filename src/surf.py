@@ -8,7 +8,7 @@ from math import sqrt
 #------------------------#
 #-----SURF ALGORITHM-----#
 #------------------------#
-image = imread('test/reference.jpg')
+image = imread('test/facile/20160525_143739.jpg')
 
 #-----PREPROCESSING-----#
 # GRAYSCALE
@@ -102,7 +102,7 @@ def non_maximum_suppression(x, y, hessian):
     return (hessian[x, y] >= hessian[x + 1, y] and hessian[x, y] >= hessian[x - 1, y]) \
         or (hessian[x, y] >= hessian[x, y + 1] and hessian[x, y] >= hessian[x, y - 1]) \
         or (hessian[x, y] >= hessian[x + 1, y + 1] and hessian[x, y] >= hessian[x - 1, y - 1]) \
-        or (hessian[x, y] >= hessian[x + 1, y - 1] and hessian[x, y] >= hessian[x - 1, y + 1]) \
+        or (hessian[x, y] >= hessian[x + 1, y - 1] and hessian[x, y] >= hessian[x - 1, y + 1])
 
 def location_refinement(x, y, L, hessian, prev_hessian, next_hessian):    
     dx = (hessian[x + 1, y] - hessian[x - 1, y]) // 2
@@ -124,15 +124,15 @@ def location_refinement(x, y, L, hessian, prev_hessian, next_hessian):
         return None
 
 def feature_selection(hessian, prev_hessian, next_hessian, L):
-    thres = np.max(hessian) // 2
+    thres = 8    * np.max(hessian) // 10
     features = []
     for x in range(hessian.shape[0]):
         for y in range(hessian.shape[1]):
             if (hessian[x, y]) > thres:
                 if non_maximum_suppression(x, y, hessian):
                     pt = location_refinement(x, y, L, hessian, prev_hessian, next_hessian)
-                    if not (pt is None):
-                        features.append((int(pt[0]), int(pt[1]),int(pt[2])))                    
+                    if (not (pt is None)) and (not ((int(pt[0]), int(pt[1]), int(pt[2])) in features)):
+                        features.append((int(pt[0]), int(pt[1]), int(pt[2])))
     return features
 
 #im3 = determinant_of_hessian_image(3, integral)
@@ -204,7 +204,7 @@ def build_descriptor(x, y, L, Dx, Dy):
                     su, sv  = sigma * u, sigma * v
                     dx, dy  = gauss[u // 3, v // 3] * np.array([Dx[x + su, y + sv], Dy[x + su, y + sv]])
                     result[i,j] += np.array([dx, dy, np.abs(dx), np.abs(dy)])
-    result = result / la.norm(result, axis=2).reshape(4,4,1 )
+    result = result / np.where(result != 0, la.norm(result, axis=2).reshape(4,4,1), 1)
     return result
 
 #x   = image.shape[0] // 2
@@ -214,21 +214,25 @@ def build_descriptor(x, y, L, Dx, Dy):
 #Dy  = first_order_y_image(L, integral)
 #
 #e = 10
-#descript1  = build_descriptor(x, y, L, Dx, Dy)
-#print(descript1)
-#descript2   = build_descriptor(x+e, y+e, L, Dx, Dy)
-#print(descript2)
+#print(build_descriptor(x, y, L, Dx, Dy))
 #print(build_descriptor(x+e, y+e, L, Dx, Dy))
 #print(build_descriptor(x-e, y-e, L, Dx, Dy))
+#print(la.norm(build_descriptor(x, y, L, Dx, Dy) - build_descriptor(x+e, y+e, L, Dx, Dy)))
 
 from time import time
+import sys
 
 
 Ls      = np.array([3,5,7,9,13,17,25,33,49,65])
 mats    = []
 
 
+t = time()
 integral = np.cumsum(np.cumsum(image, axis=0), axis=1)
+print(time() - t)
+sys.stdout.flush()
+
+
 t = time()
 for L in Ls:
     hessian = determinant_of_hessian_image(L, integral)
@@ -236,6 +240,8 @@ for L in Ls:
     Dy      = first_order_y_image(L, integral)
     mats.append((hessian, Dx, Dy))
 print(time() - t)
+sys.stdout.flush()
+
 
 features    = []
 t = time()
@@ -243,11 +249,18 @@ for i in range(1, len(Ls) - 1):
     extracted = feature_selection(mats[i][0], mats[i - 1][0], mats[i + 1][0], Ls[i])
     features += extracted
     print(Ls[i], len(extracted))
-print(time() - t)
+    sys.stdout.flush()
 
-#descriptors     = []
-#t = time()
-#for feature in features:
-#    iL  = np.abs(Ls - feature[2]).argmin
-#    descriptors.append(build_descriptor(feature[0], feature[1], feature[2], mats[i][1], mats[i][2]))
-#print(time() - t)
+print(len(features))
+print(time() - t)
+sys.stdout.flush()
+
+
+descriptors     = []
+t = time()
+for feature in features:
+    print(feature)
+    iL  = np.abs(Ls - feature[2]).argmin
+    descriptors.append(build_descriptor(feature[0], feature[1], feature[2], mats[i][1], mats[i][2]))
+print(time() - t)
+sys.stdout.flush()
